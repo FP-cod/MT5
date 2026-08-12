@@ -17,4 +17,5 @@ venv/
 # Fichiers de l' éditeur
 .vscode/
 .idea/
+models/*.json
 
