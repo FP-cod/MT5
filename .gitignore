@@ -1,0 +1,20 @@
+# Fichiers de configuration contenant vos identifiants
+.env
+config.ini
+secrets.json
+
+# Fichiers Python temporaires et virtuels
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Historique des logs et base de données locales
+*.log
+*.csv
+*.db
+*.sqlite3
+# Fichiers de l' éditeur
+.vscode/
+.idea/
+
