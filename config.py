@@ -12,11 +12,15 @@ MT5_SERVER = os.getenv("MT5_SERVER", "OANDA-Demo")
 # Paramètres de stratégie et gestion du risque
 SYMBOL = os.getenv("SYMBOL", "EURUSD")
 CAPITAL = float(os.getenv("CAPITAL", 250.0))
-RISK_PCT = float(os.getenv("RISK_PCT", 4.0))  # 4% = 10€
+RISK_PCT = float(os.getenv("RISK_PCT", 4.0))  # pourcentage du capital
 SL_PIPS = float(os.getenv("SL_PIPS", 35.0))
 TP_PIPS = float(os.getenv("TP_PIPS", 52.0))
 MAX_ATR_PIPS = float(os.getenv("MAX_ATR_PIPS", 28.0))
 PROBA_THRESHOLD = float(os.getenv("PROBA_THRESHOLD", 0.65))
 
-# Unité de temps (H1 par défaut)
+# Dry run / paper trading
+DRY_RUN = os.getenv("DRY_RUN", "false").lower() in ("1", "true", "yes")
+
+# Paramètres backtest / simulation
+PIP_VALUE_PER_LOT = float(os.getenv("PIP_VALUE_PER_LOT", 10.0))  # ex: EURUSD 1 lot ~= 10 USD/pip
 TIMEFRAME = mt5.TIMEFRAME_H1
