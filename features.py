@@ -12,6 +12,9 @@ def recuperer_donnees(symbol: str, timeframe: int, nb_bougies: int = 500) -> pd.
 
     df = pd.DataFrame(rates)
     df["time"] = pd.to_datetime(df["time"], unit="s")
+    for col in ("open", "high", "low", "close", "tick_volume"):
+        if col in df:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
 
@@ -25,14 +28,27 @@ def calculer_features(df: pd.DataFrame) -> pd.DataFrame:
     df["dist_ema50_pips"] = (df["close"] - df["ema_50"]) * 10000
 
     # 2. Volatilité (ATR en pips)
-    df["atr_14_pips"] = ta.volatility.average_true_range(
-        df["high"], df["low"], df["close"], window=14
-    ) * 10000
+    df["atr_14_pips"] = (
+        ta.volatility.average_true_range(df["high"], df["low"], df["close"], window=14) * 10000
+    )
 
     # 3. Momentum
     df["rsi_14"] = ta.momentum.rsi(df["close"], window=14)
     df["macd_diff"] = ta.trend.macd_diff(df["close"])
 
-    # Nettoyage des valeurs manquantes
+    # Nettoyage des valeurs manquantes causées par les indicateurs
     df.dropna(inplace=True)
-    return df
+    cols = [
+        "time",
+        "open",
+        "high",
+        "low",
+        "close",
+        "ema_50",
+        "ema_200",
+        "dist_ema50_pips",
+        "atr_14_pips",
+        "rsi_14",
+        "macd_diff",
+    ]
+    return df[cols].reset_index(drop=True)

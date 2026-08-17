@@ -8,7 +8,7 @@ class TradingModelIA:
 
     def __init__(self, model_path: str = "models/xgboost_forex.json"):
         self.model_path = model_path
-        self.model = XGBClassifier()
+        self.model = XGBClassifier(use_label_encoder=False, eval_metric="logloss")
         self.features_cols = ["dist_ema50_pips", "atr_14_pips", "rsi_14", "macd_diff"]
 
         if os.path.exists(self.model_path):
@@ -24,22 +24,29 @@ class TradingModelIA:
         signal : 1 (Achat), -1 (Vente), 0 (Neutre)
         """
         if not self.is_trained:
-            # Règle heuristique de repli si aucun modèle entraîné n'est présent
             ema_trend = 1 if derniere_bougie["close"] > derniere_bougie["ema_200"] else -1
             rsi = derniere_bougie["rsi_14"]
 
             if ema_trend == 1 and rsi < 45:
-                return 1, 0.70  # Achat sur pullback
+                return 1, 0.70
             elif ema_trend == -1 and rsi > 55:
-                return -1, 0.70  # Vente sur pullback
+                return -1, 0.70
             return 0, 0.50
 
-        # Préparation des features pour XGBoost
-        X = pd.DataFrame([derniere_bougie[self.features_cols]])
+        X = pd.DataFrame([derniere_bougie[self.features_cols]]).astype(float)
         probas = self.model.predict_proba(X)[0]
-        prediction = int(np.argmax(probas))
-        prob_max = float(probas[prediction])
+        pred = self.model.predict(X)[0]
+        classes = list(self.model.classes_)
+        try:
+            prob_max = float(probas[classes.index(pred)])
+        except ValueError:
+            prob_max = float(np.max(probas))
 
-        # Mapping : 0 = Vente, 1 = Neutre, 2 = Achat
-        signal_map = {0: -1, 1: 0, 2: 1}
-        return signal_map.get(prediction, 0), prob_max
+        if set(classes) >= {-1, 0, 1}:
+            signal = int(pred)
+        else:
+            map_by_index = {0: -1, 1: 0, 2: 1}
+            idx = int(np.argmax(probas))
+            signal = map_by_index.get(idx, 0)
+
+        return signal, prob_max
