@@ -1,3 +1,10 @@
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from fastapi import FastAPI, Request, HTTPException, Form
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -7,7 +14,6 @@ import os
 import signal
 import time
 import pandas as pd
-from pathlib import Path
 from tools.metrics import compute_metrics
 from web import accounting
 import secrets
@@ -118,7 +124,13 @@ def require_auth(request: Request):
 
 
 @app.get("/", response_class=HTMLResponse)
-def index(request: Request):
+def home(request: Request):
+    template = TEMPLATES.get_template("home.html")
+    return HTMLResponse(template.render(running=bot_is_running(), dry_run=True))
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request):
     trades = read_sim_trades()
     trades_df, equity_df, metrics = read_backtest()
     template = TEMPLATES.get_template("index.html")
@@ -129,6 +141,23 @@ def index(request: Request):
 def login_get(request: Request):
     template = TEMPLATES.get_template("login.html")
     return HTMLResponse(template.render(error=None))
+
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin_page(request: Request):
+    template = TEMPLATES.get_template("admin.html")
+    return HTMLResponse(template.render(running=bot_is_running(), dry_run=True))
+
+
+@app.get("/accounts", response_class=HTMLResponse)
+def accounts_page(request: Request):
+    template = TEMPLATES.get_template("accounts.html")
+    return HTMLResponse(template.render())
+
+
+@app.get("/index", response_class=HTMLResponse)
+def legacy_index(request: Request):
+    return dashboard(request)
 
 
 @app.post("/login")
@@ -233,3 +262,8 @@ def api_metrics():
     if metrics is None:
         return {"message": "No backtest available yet"}
     return metrics
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8080)

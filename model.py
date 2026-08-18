@@ -1,7 +1,24 @@
 import os
 import numpy as np
 import pandas as pd
-from xgboost import XGBClassifier
+
+try:
+    from xgboost import XGBClassifier
+except ModuleNotFoundError:  # pragma: no cover - local dry-run fallback
+    class XGBClassifier:
+        def __init__(self, *args, **kwargs):
+            self.classes_ = np.array([-1, 0, 1])
+
+        def load_model(self, *args, **kwargs):
+            return None
+
+        def predict(self, X):
+            n = len(X)
+            return np.zeros(n, dtype=int)
+
+        def predict_proba(self, X):
+            n = len(X)
+            return np.tile([0.34, 0.33, 0.33], (n, 1))
 
 
 class TradingModelIA:

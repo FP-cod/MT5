@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Administration MT5</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/styles.css" rel="stylesheet">
+  </head>
+  <body>
+    <nav class="sidebar">
+      <div class="brand">MT5 Admin</div>
+      <a href="/">Accueil</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/accounts">Comptes</a>
+      <a href="/accounting">Comptabilité</a>
+      <a href="/logout">Déconnexion</a>
+    </nav>
+
+    <main class="content">
+      <div class="container py-4">
+        <h1>Administration</h1>
+
+        <div class="card p-4 mb-4">
+          <h3>Mode d’exécution</h3>
+          <div class="d-flex gap-3 align-items-center mb-2">
+            <span class="status-badge {{ 'warning' if dry_run else 'success' }}">{{ 'DRY RUN' if dry_run else 'LIVE' }}</span>
+            <button class="btn btn-primary" data-toggle-mode="{{ 'live' if dry_run else 'dry' }}">
+              Basculer vers {{ 'LIVE' if dry_run else 'DRY RUN' }}
+            </button>
+          </div>
+          <small class="text-muted">Le mode dry-run simule les ordres sans aucun envoi réel à MT5.</small>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-md-6">
+            <div class="card p-4">
+              <h3>Paramètres robot</h3>
+              <ul class="key-value-list">
+                <li><span>Symbol</span><strong>EURUSD</strong></li>
+                <li><span>Risk %</span><strong>1.0</strong></li>
+                <li><span>Timeframe</span><strong>H1</strong></li>
+                <li><span>Bot</span><strong>{{ 'Actif' if running else 'Inactif' }}</strong></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="card p-4">
+              <h3>Connexions</h3>
+              <ul class="key-value-list">
+                <li><span>Broker</span><strong>MetaTrader 5</strong></li>
+                <li><span>Login</span><strong>--</strong></li>
+                <li><span>Serveur</span><strong>Demo server</strong></li>
+                <li><span>Env</span><strong>Sandbox</strong></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="/static/js/dashboard.js"></script>
+  </body>
+</html>

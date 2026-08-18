@@ -1,4 +1,8 @@
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ModuleNotFoundError:  # pragma: no cover - local dry-run fallback
+    import sim_mt5 as mt5
+
 import numpy as np
 import pandas as pd
 import ta

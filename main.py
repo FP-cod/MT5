@@ -1,6 +1,11 @@
 import sys
 import time
-import MetaTrader5 as mt5
+
+try:
+    import MetaTrader5 as mt5
+except ModuleNotFoundError:  # pragma: no cover - local dry-run fallback
+    import sim_mt5 as mt5
+
 import config
 from execution import executer_ordre
 from features import calculer_features, recuperer_donnees

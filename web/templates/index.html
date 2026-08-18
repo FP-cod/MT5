@@ -2,60 +2,112 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8">
-    <title>Supervision MT5 - Dashboard</title>
+    <title>Dashboard MT5</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/styles.css" rel="stylesheet">
   </head>
-  <body class="p-4">
-    <div class="container">
-      <h1>Dashboard - MT5 Agent</h1>
-      <div class="mb-3">
-        <form method="post" action="/start" style="display:inline">
-          <button class="btn btn-success">Démarrer le bot</button>
-        </form>
-        <form method="post" action="/stop" style="display:inline">
-          <button class="btn btn-danger">Arrêter le bot</button>
-        </form>
-        <a class="btn btn-secondary" href="/download/trades">Télécharger trades simulés</a>
+  <body>
+    <nav class="sidebar">
+      <div class="brand">MT5 Panel</div>
+      <a href="/">Accueil</a>
+      <a href="/dashboard" class="active">Dashboard</a>
+      <a href="/accounts">Comptes</a>
+      <a href="/admin">Admin</a>
+      <a href="/accounting">Comptabilité</a>
+      <a href="/logout">Déconnexion</a>
+    </nav>
+
+    <main class="content">
+      <div class="container py-4">
+        <div class="page-head d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <p class="eyebrow">Supervision</p>
+            <h1>Dashboard MT5</h1>
+          </div>
+          <div class="d-flex gap-2">
+            <form method="post" action="/start" style="display:inline">
+              <button class="btn btn-success">Démarrer</button>
+            </form>
+            <form method="post" action="/stop" style="display:inline">
+              <button class="btn btn-outline-danger">Arrêter</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+          <div class="col-md-3">
+            <div class="stat-card">
+              <span>État</span>
+              <strong>{{ 'Actif' if running else 'Inactif' }}</strong>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="stat-card">
+              <span>Trades</span>
+              <strong>{{ metrics.trades if metrics else 0 }}</strong>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="stat-card">
+              <span>Win rate</span>
+              <strong>{{ ((metrics.win_rate * 100) | round(2)) if metrics else 0 }}%</strong>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="stat-card">
+              <span>ROI</span>
+              <strong>{{ ((metrics.total_return * 100) | round(2)) if metrics else 0 }}%</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-4">
+          <div class="col-lg-8">
+            <div class="card section-card">
+              <h3>Derniers trades simulés</h3>
+              {% if trades %}
+                <div class="table-wrap">
+                  <table class="table table-sm table-striped align-middle">
+                    <thead>
+                      <tr><th>Symbole</th><th>Side</th><th>Lots</th><th>Prix</th><th>SL</th><th>TP</th></tr>
+                    </thead>
+                    <tbody>
+                      {% for t in trades %}
+                        <tr>
+                          <td>{{ t.symbol }}</td>
+                          <td>{{ t.side }}</td>
+                          <td>{{ t.lots }}</td>
+                          <td>{{ t.price }}</td>
+                          <td>{{ t.sl }}</td>
+                          <td>{{ t.tp }}</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% else %}
+                <p class="empty-state">Aucun trade simulé pour l'instant.</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="col-lg-4">
+            <div class="card section-card">
+              <h3>Métriques</h3>
+              {% if metrics %}
+                <ul class="metrics-list">
+                  <li><span>Profit factor</span><strong>{{ metrics.profit_factor }}</strong></li>
+                  <li><span>Max drawdown</span><strong>{{ ((metrics.max_drawdown * 100) | round(2)) }}%</strong></li>
+                  <li><span>Sharpe</span><strong>{{ metrics.sharpe | round(3) }}</strong></li>
+                </ul>
+              {% else %}
+                <p class="empty-state">Aucune backtest disponible.</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
       </div>
-
-      <h2>État</h2>
-      <p>Bot running: <strong>{{ 'Oui' if running else 'Non' }}</strong></p>
-
-      <h2>Métriques backtest (si disponibles)</h2>
-      {% if metrics %}
-        <ul>
-          <li>Trades : {{ metrics.trades }}</li>
-          <li>Win rate : {{ (metrics.win_rate * 100) | round(2) }}%</li>
-          <li>ROI : {{ (metrics.total_return * 100) | round(2) }}%</li>
-          <li>Profit factor : {{ metrics.profit_factor }}</li>
-          <li>Max drawdown : {{ (metrics.max_drawdown * 100) | round(2) }}%</li>
-          <li>Sharpe : {{ metrics.sharpe | round(3) }}</li>
-        </ul>
-      {% else %}
-        <p>Aucune backtest / métriques disponibles.</p>
-      {% endif %}
-
-      <h2>Derniers trades simulés</h2>
-      {% if trades %}
-        <table class="table table-sm table-striped">
-          <thead><tr><th>symbol</th><th>side</th><th>lots</th><th>price</th><th>sl</th><th>tp</th></tr></thead>
-          <tbody>
-            {% for t in trades %}
-              <tr>
-                <td>{{ t.symbol }}</td>
-                <td>{{ t.side }}</td>
-                <td>{{ t.lots }}</td>
-                <td>{{ t.price }}</td>
-                <td>{{ t.sl }}</td>
-                <td>{{ t.tp }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <p>Aucun trade simulé pour l'instant.</p>
-      {% endif %}
-    </div>
+    </main>
   </body>
 </html>

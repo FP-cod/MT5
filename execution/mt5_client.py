@@ -1,4 +1,8 @@
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ModuleNotFoundError:  # pragma: no cover - local dry-run fallback
+    import sim_mt5 as mt5
+
 
 class MT5Client:
     def __init__(self, config: dict | None = None, dry_run: bool = True):
