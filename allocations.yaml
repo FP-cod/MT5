@@ -1,0 +1,38 @@
+# allocation targets are expressed as raw values (not necessarily summing to 1).
+# If normalize: true the manager will scale them so they sum to 1.
+
+normalize: true
+
+# Top-level buckets. These are the user-provided targets (will be normalized if needed).
+targets:
+  indices: 0.40
+  crypto: 0.30
+  large_caps: 0.20
+  cash: 0.10
+  forex: 0.05
+
+# Per-bucket symbol splits (must sum ~1.0 within each bucket)
+buckets:
+  indices:
+    SPX500: 0.34
+    NAS100: 0.33
+    DAX30: 0.33
+  crypto:
+    BTCUSD: 0.60
+    ETHUSD: 0.40
+  large_caps:
+    AAPL: 0.34
+    MSFT: 0.33
+    GOOGL: 0.33
+  forex:
+    EURUSD: 1.0
+
+# Pairs trading candidates (will be used by pairs_trading strategy)
+pairs_candidates:
+  - ["AAPL", "MSFT"]
+  - ["GOOGL", "MSFT"]
+
+# Flags
+rebalance:
+  cadence: daily
+  threshold_pct: 0.025
