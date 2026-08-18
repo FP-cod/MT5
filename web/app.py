@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi import FastAPI, Request, HTTPException, Form
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 import subprocess
@@ -9,6 +9,9 @@ import time
 import pandas as pd
 from pathlib import Path
 from tools.metrics import compute_metrics
+from web import accounting
+import secrets
+import json
 
 APP_ROOT = Path(__file__).resolve().parent
 TEMPLATES = Environment(
@@ -22,8 +25,15 @@ SIM_CSV = APP_ROOT.parent / "trades_simulated.csv"
 BACKTEST_TRADES = APP_ROOT.parent / "backtest_trades.csv"
 BACKTEST_EQUITY = APP_ROOT.parent / "backtest_equity.csv"
 
+DB_PATH = APP_ROOT.parent / "data" / "accounting.db"
+if not DB_PATH.parent.exists():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=APP_ROOT / "static"), name="static")
+
+# In-memory sessions: token -> username
+SESSIONS: dict = {}
 
 
 def read_sim_trades():
@@ -97,6 +107,16 @@ def stop_bot():
         return False, f"Error stopping bot: {e}"
 
 
+def require_auth(request: Request):
+    token = request.cookies.get("session")
+    if not token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    user = SESSIONS.get(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return user
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     trades = read_sim_trades()
@@ -105,27 +125,106 @@ def index(request: Request):
     return HTMLResponse(template.render(trades=trades, metrics=metrics, running=bot_is_running()))
 
 
-@app.post("/start")
-def api_start():
-    ok, msg = start_bot()
+@app.get("/login", response_class=HTMLResponse)
+def login_get(request: Request):
+    template = TEMPLATES.get_template("login.html")
+    return HTMLResponse(template.render(error=None))
+
+
+@app.post("/login")
+async def login_post(request: Request, username: str = Form(...), password: str = Form(...)):
+    # verify user via accounting module
+    if not DB_PATH.exists():
+        return HTMLResponse("<p>DB not initialized. Call /init first.</p>")
+    ok = accounting.verify_user(DB_PATH, username, password)
     if not ok:
-        raise HTTPException(status_code=400, detail=msg)
-    return {"status": "started", "msg": msg}
+        template = TEMPLATES.get_template("login.html")
+        return HTMLResponse(template.render(error="Invalid credentials"))
+    token = secrets.token_urlsafe(32)
+    SESSIONS[token] = username
+    resp = RedirectResponse(url='/', status_code=302)
+    resp.set_cookie("session", token, httponly=True)
+    return resp
 
 
-@app.post("/stop")
-def api_stop():
-    ok, msg = stop_bot()
-    if not ok:
-        raise HTTPException(status_code=400, detail=msg)
-    return {"status": "stopped", "msg": msg}
+@app.get("/logout")
+def logout(request: Request):
+    token = request.cookies.get("session")
+    if token in SESSIONS:
+        del SESSIONS[token]
+    resp = RedirectResponse(url='/login', status_code=302)
+    resp.delete_cookie("session")
+    return resp
 
 
-@app.get("/download/trades")
-def download_trades():
-    if SIM_CSV.exists():
-        return FileResponse(str(SIM_CSV), media_type="text/csv", filename="trades_simulated.csv")
-    raise HTTPException(status_code=404, detail="No simulated trades file")
+@app.post("/init")
+async def api_init(payload: dict):
+    """Initialize the SQLite DB. Payload: {"username":..., "password":...}
+    This endpoint creates the DB and creates the admin user. Only allowed if no users exist.
+    """
+    username = payload.get("username")
+    password = payload.get("password")
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="username and password required")
+    accounting.init_db(DB_PATH)
+    count = accounting.user_count(DB_PATH)
+    if count > 0:
+        raise HTTPException(status_code=400, detail="DB already initialized")
+    accounting.create_user(DB_PATH, username, password)
+    return {"status": "ok", "msg": "db initialized and admin created"}
+
+
+@app.get("/accounting", response_class=HTMLResponse)
+def accounting_ui(request: Request):
+    try:
+        require_auth(request)
+    except HTTPException:
+        return RedirectResponse(url='/login')
+    template = TEMPLATES.get_template("accounting.html")
+    return HTMLResponse(template.render())
+
+
+@app.get("/api/accounting/entries")
+def api_list_entries(request: Request):
+    require_auth(request)
+    mode = accounting.get_setting(DB_PATH, "mode") or "nom_propre"
+    entries = accounting.list_entries(DB_PATH, mode=mode)
+    return {"entries": entries}
+
+
+@app.post("/api/accounting/entries")
+async def api_add_entry(request: Request):
+    user = require_auth(request)
+    payload = await request.json()
+    mode = accounting.get_setting(DB_PATH, "mode") or "nom_propre"
+    accounting.add_entry(DB_PATH, mode=mode, **payload)
+    return {"status": "ok"}
+
+
+@app.get("/api/accounting/mode")
+def api_get_mode(request: Request):
+    require_auth(request)
+    mode = accounting.get_setting(DB_PATH, "mode") or "nom_propre"
+    return {"mode": mode}
+
+
+@app.post("/api/accounting/mode")
+async def api_set_mode(request: Request):
+    require_auth(request)
+    payload = await request.json()
+    mode = payload.get("mode")
+    if mode not in ("nom_propre", "sasu"):
+        raise HTTPException(status_code=400, detail="invalid mode")
+    accounting.set_setting(DB_PATH, "mode", mode)
+    return {"status": "ok", "mode": mode}
+
+
+@app.get("/api/accounting/export")
+def api_export_entries(request: Request):
+    require_auth(request)
+    mode = accounting.get_setting(DB_PATH, "mode") or "nom_propre"
+    fp = accounting.export_entries_csv(DB_PATH, mode=mode)
+    return FileResponse(fp, media_type="text/csv", filename=os.path.basename(fp))
 
 
 @app.get("/metrics")

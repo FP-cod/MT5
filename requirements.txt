@@ -1,8 +1,4 @@
-MetaTrader5
-pandas
-numpy
-pyyaml
-python-dotenv
-xgboost
-scikit-learn
-# Target: Python 3.11+
+# Additional web UI dependencies
+fastapi
+uvicorn
+python-multipart
